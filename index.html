@@ -1,89 +1,120 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Simple CRUD</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Manager SPA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Book CRUD</h2>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
 
-  <!-- Create / Update Form -->
-  <form id="bookForm">
-    <input type="hidden" id="bookId">
-    <input type="text" id="title" placeholder="Title" required>
-    <input type="text" id="author" placeholder="Author" required>
-    <button type="submit">Save</button>
-  </form>
+    <h1 class="text-4xl font-bold mb-6">Book Manager</h1>
 
-  <h3>Book List</h3>
-  <ul id="bookList"></ul>
+    <!-- Form to add/edit a book -->
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6 w-full max-w-md">
+        <h2 class="text-2xl font-semibold mb-4" id="form-title">Add Book</h2>
+        <form id="book-form" class="flex flex-col gap-4">
+            <input type="text" id="title" placeholder="Title" class="border rounded p-2 w-full" required>
+            <input type="text" id="author" placeholder="Author" class="border rounded p-2 w-full" required>
+            <button type="submit" class="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600 transition">Save</button>
+            <button type="button" id="cancel-edit" class="hidden bg-gray-400 text-white rounded px-4 py-2 hover:bg-gray-500 transition">Cancel</button>
+        </form>
+    </div>
 
-  <script>
-    const apiUrl = "https://techtest21.pythonanywhere.com/api/books"; // change if needed
-    const list = document.getElementById("bookList");
-    const form = document.getElementById("bookForm");
-    const titleInput = document.getElementById("title");
-    const authorInput = document.getElementById("author");
-    const bookIdInput = document.getElementById("bookId");
+    <!-- Book list -->
+    <div class="w-full max-w-3xl">
+        <h2 class="text-2xl font-semibold mb-4">Books List</h2>
+        <ul id="books-list" class="space-y-4"></ul>
+    </div>
 
-    // Load all books
-    async function loadBooks() {
-      list.innerHTML = "";
-      const res = await fetch(apiUrl);
-      const books = await res.json();
-      books.forEach(b => {
+<script>
+const API_URL = "https://techtest21.pythonanywhere.com/api/books";
+let editBookId = null;
+
+// Fetch all books
+async function fetchBooks() {
+    const res = await fetch(API_URL);
+    const books = await res.json();
+    renderBooks(books);
+}
+
+// Render books to the list
+function renderBooks(books) {
+    const list = document.getElementById("books-list");
+    list.innerHTML = "";
+    books.forEach(book => {
         const li = document.createElement("li");
-        li.textContent = `${b.title} by ${b.author} `;
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "Edit";
-        editBtn.onclick = () => editBook(b);
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Delete";
-        delBtn.onclick = () => deleteBook(b.id);
-        li.appendChild(editBtn);
-        li.appendChild(delBtn);
+        li.className = "bg-white p-4 rounded shadow flex justify-between items-center";
+
+        li.innerHTML = `
+            <div>
+                <h3 class="font-bold text-lg">${book.title}</h3>
+                <p class="text-gray-600">${book.author}</p>
+            </div>
+            <div class="flex gap-2">
+                <button class="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500" onclick="editBook(${book.id}, '${book.title}', '${book.author}')">Edit</button>
+                <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" onclick="deleteBook(${book.id})">Delete</button>
+            </div>
+        `;
         list.appendChild(li);
-      });
-    }
+    });
+}
 
-    // Create or Update book
-    form.onsubmit = async e => {
-      e.preventDefault();
-      const id = bookIdInput.value;
-      const data = { title: titleInput.value, author: authorInput.value };
-      if (id) {
-        await fetch(`${apiUrl}/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+// Add or update book
+document.getElementById("book-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("title").value;
+    const author = document.getElementById("author").value;
+
+    if(editBookId) {
+        await fetch(`${API_URL}/${editBookId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, author })
         });
-      } else {
-        await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+        editBookId = null;
+        document.getElementById("form-title").innerText = "Add Book";
+        document.getElementById("cancel-edit").classList.add("hidden");
+    } else {
+        await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, author })
         });
-      }
-      form.reset();
-      bookIdInput.value = "";
-      loadBooks();
-    };
-
-    // Edit book
-    function editBook(b) {
-      bookIdInput.value = b.id;
-      titleInput.value = b.title;
-      authorInput.value = b.author;
     }
 
-    // Delete book
-    async function deleteBook(id) {
-      await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
-      loadBooks();
-    }
+    document.getElementById("book-form").reset();
+    fetchBooks();
+});
 
-    // Initial load
-    loadBooks();
-  </script>
+// Edit a book
+function editBook(id, title, author) {
+    editBookId = id;
+    document.getElementById("title").value = title;
+    document.getElementById("author").value = author;
+    document.getElementById("form-title").innerText = "Edit Book";
+    document.getElementById("cancel-edit").classList.remove("hidden");
+}
+
+// Cancel edit
+document.getElementById("cancel-edit").addEventListener("click", () => {
+    editBookId = null;
+    document.getElementById("book-form").reset();
+    document.getElementById("form-title").innerText = "Add Book";
+    document.getElementById("cancel-edit").classList.add("hidden");
+});
+
+// Delete a book
+async function deleteBook(id) {
+    if(confirm("Are you sure you want to delete this book?")) {
+        await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+        fetchBooks();
+    }
+}
+
+// Initial load
+fetchBooks();
+</script>
+
 </body>
 </html>
