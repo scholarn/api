@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Simple CRUD</title>
+</head>
+<body>
+  <h2>Book CRUD</h2>
+
+  <!-- Create / Update Form -->
+  <form id="bookForm">
+    <input type="hidden" id="bookId">
+    <input type="text" id="title" placeholder="Title" required>
+    <input type="text" id="author" placeholder="Author" required>
+    <button type="submit">Save</button>
+  </form>
+
+  <h3>Book List</h3>
+  <ul id="bookList"></ul>
+
+  <script>
+    const apiUrl = "https://techtest21.pythonanywhere.com/api/books"; // change if needed
+    const list = document.getElementById("bookList");
+    const form = document.getElementById("bookForm");
+    const titleInput = document.getElementById("title");
+    const authorInput = document.getElementById("author");
+    const bookIdInput = document.getElementById("bookId");
+
+    // Load all books
+    async function loadBooks() {
+      list.innerHTML = "";
+      const res = await fetch(apiUrl);
+      const books = await res.json();
+      books.forEach(b => {
+        const li = document.createElement("li");
+        li.textContent = `${b.title} by ${b.author} `;
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Edit";
+        editBtn.onclick = () => editBook(b);
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => deleteBook(b.id);
+        li.appendChild(editBtn);
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+    }
+
+    // Create or Update book
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const id = bookIdInput.value;
+      const data = { title: titleInput.value, author: authorInput.value };
+      if (id) {
+        await fetch(`${apiUrl}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      } else {
+        await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      }
+      form.reset();
+      bookIdInput.value = "";
+      loadBooks();
+    };
+
+    // Edit book
+    function editBook(b) {
+      bookIdInput.value = b.id;
+      titleInput.value = b.title;
+      authorInput.value = b.author;
+    }
+
+    // Delete book
+    async function deleteBook(id) {
+      await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+      loadBooks();
+    }
+
+    // Initial load
+    loadBooks();
+  </script>
+</body>
+</html>
